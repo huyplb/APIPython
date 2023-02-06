@@ -1,103 +1,166 @@
-from flask import Flask, jsonify, request
 import csv
 import os
-
-app = Flask(__name__)
-
+import json
 # Create a list of dictionaries
 tasks = []
 
+class Task:
+    def __init__(self):
+        self.data = []
+        current_directory = os.getcwd()
+        list_length = len(tasks)
+        if list_length == 0:
+            with open(current_directory + '/restapi/movies.csv', 'r') as file:
+                reader = csv.reader(file)
+                headers = next(reader)
+                for row in reader:
+                    # Create a dictionary for each row, mapping the headers to the values
+                    row_data = dict(zip(headers, row))
+                    # Add a new dictionary to the list
+                    self.data.append(row_data)
+                    
+    def __init__(self, data):
+        self.data = data
 
-def read_csv_file():
-    current_directory = os.getcwd()
-    # Read the CSV file
-    list_length = len(tasks)
-    if list_length == 0:
-        with open(current_directory + '/restapi/movies.csv', 'r') as file:
-            reader = csv.reader(file)
-            headers = next(reader)
-            for row in reader:
-                # Create a dictionary for each row, mapping the headers to the values
-                row_data = dict(zip(headers, row))
-                # Add a new dictionary to the list
-                tasks.append(row_data)
+    # def read_csv_file():
+    #     current_directory = os.getcwd()
+    #     # Read the CSV file
+    #     list_length = len(tasks)
+    #     if list_length == 0:
+    #         with open(current_directory + '/restapi/movies.csv', 'r') as file:
+    #             reader = csv.reader(file)
+    #             headers = next(reader)
+    #             for row in reader:
+    #                 # Create a dictionary for each row, mapping the headers to the values
+    #                 row_data = dict(zip(headers, row))
+    #                 # Add a new dictionary to the list
+    #                 tasks.append(row_data)
+    #     else:
+    #         return tasks
+    #     return tasks
+
+    # def get_tasks():
+    #     # :Load data 
+    #     read_csv_file()
+    #     return jsonify({'tasks': tasks})
+
+# @app.route('/tasks/<int:task_id>', methods=['GET'])
+    def get_task(self,task_id):
+        task = [task for task in tasks if task['id'] == task_id]
+        if len(task) == 0:
+            return {
+                'statusCode': 200,
+                'body': json.dumps({"status": "done", "message": "task not found"})
+            }
+        return {
+                'statusCode': 200,
+                'body': json.dumps({"tasks": self.data})
+            }
+
+# @app.route('/tasks', methods=['POST'])
+    def create_task(self, task):
+        # :Load data 
+        if not task:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({"status": "error", "message": "body data is empty"})
+            }
+
+        id = int(tasks[-1]["id"]) +1
+        task = {
+            'id': id,
+            'name': task['name'],
+            'description':task('description', ""),
+            'category' :task('category', ""),
+            'director' :task('director', ""),
+            'income' :task('income', ""),   
+            'invest' :task('invest', ""),   
+            'location' :task('location', ""),     
+            'percentage': task('percentage', ""),     
+            'rating': task('rating', ""),   
+            'revenue': task('revenue', ""),     
+        }
+        tasks.append(task)
+        return {
+                'statusCode': 200,
+                'body': json.dumps({"task": task})
+            }
+
+# @app.route('/tasks/<int:task_id>', methods=['PUT'])
+    def update_task(self,task_id, task):
+        # :Load data 
+        task = [task for task in self.data if task['id'] == task_id]
+        if len(task) == 0:
+            return {
+                'statusCode': 200,
+                'body': json.dumps({"status": "done", "message": "task not found"})
+            }
+        if not task:
+             return {
+            'statusCode': 404,
+            'body': {'message': 'Bad request'}
+        } 
+                
+        task[0]['name'] = task['name']
+        task[0]['description'] = task['description']
+        task[0]['category'] = task['category']
+        task[0]['director'] = task['director']
+        task[0]['income'] = task['income']
+        task[0]['invest'] = task['invest']
+        task[0]['location'] = task['location']   
+        task[0]['percentage'] = task['percentage']
+        task[0]['rating'] = task['rating']
+        task[0]['revenue'] = task['revenue'] 
+        return {
+            'statusCode': 200,
+            'body': task
+        } 
+
+# @app.route('/tasks/<int:task_id>', methods=['DELETE'])
+    def delete_task(self,task_id):
+        # :Load data 
+        task = [task for task in self.data if task['id'] == task_id]
+        if len(task) == 0:
+            return {
+            'statusCode': 200,
+            'body': json.dumps({"status": "error", "message": "task not found"})
+        } 
+            return jsonify(), 404
+        tasks.remove(task[0])
+        return  {
+            'statusCode': 200,
+            'body': json.dumps({"status": "done", "message": "tasked"})
+        } 
+
+# if __name__ == '__main__':
+#     app.run()
+
+
+def lambda_handler(event, context):
+    api = Task()
+    if event['httpMethod'] == 'POST':
+        item_id = event['pathParameters']['item_id']
+        body = json.loads(event['body'])
+        result = api.update_task(item_id, body)
+    elif event['httpMethod'] == 'GET':
+        item_id = event['pathParameters']['item_id']
+        result = api.get(item_id)
+    elif event['httpMethod'] == 'PUT':
+        item_id = event['pathParameters']['item_id']
+        body = json.loads(event['body'])
+        result = api.put(item_id, body)
+    elif event['httpMethod'] == 'DELETE':
+        item_id = event['pathParameters']['item_id']
+        result = api.delete(item_id)
     else:
-        return tasks
-    return tasks
+        result = {"status": "error", "message": "invalid request type"}
 
-@app.route('/tasks', methods=['GET'])
-def get_tasks():
-    # :Load data 
-    read_csv_file()
-    return jsonify({'tasks': tasks})
-
-@app.route('/tasks/<int:task_id>', methods=['GET'])
-def get_task(task_id):
-    task = [task for task in tasks if task['id'] == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'}), 404
-    return jsonify({'task': task[0]})
-
-@app.route('/tasks', methods=['POST'])
-def create_task():
-     # :Load data 
-    read_csv_file()
-    if not request.json or not 'name' in request.json:
-        return jsonify({'message': 'Bad request'}), 400
-    print(tasks)
-    id = int(tasks[-1]["id"]) +1
-    task = {
-        'id': id,
-        'name': request.json['name'],
-        'description':request.json.get('description', ""),
-        'category' :request.json.get('category', ""),
-        'director' :request.json.get('director', ""),
-        'income' :request.json.get('income', ""),   
-        'invest' :request.json.get('invest', ""),   
-        'location' :request.json.get('location', ""),     
-        'percentage': request.json.get('percentage', ""),     
-        'rating': request.json.get('rating', ""),   
-        'revenue': request.json.get('revenue', ""),     
+    return {
+        'statusCode': 200,
+        'body': json.dumps(result)
     }
-    tasks.append(task)
-    return jsonify({'task': task}), 201
 
-@app.route('/tasks/<int:task_id>', methods=['PUT'])
-def update_task(task_id):
-     # :Load data 
-    read_csv_file()
-    task = [task for task in tasks if int(task['id']) == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'}), 404
-    if not request.json:
-        return jsonify({'message': 'Bad request'}), 400
-            
-    task[0]['name'] = request.json['name']
-    task[0]['description'] = request.json.get('description', "")
-    task[0]['category'] = request.json.get('category', "")
-    task[0]['director'] = request.json.get('director', "")
-    task[0]['income'] = request.json.get('income', "")
-    task[0]['invest'] = request.json.get('invest', "")   
-    task[0]['location'] = request.json.get('location', "")     
-    task[0]['percentage'] = request.json.get('percentage', "")     
-    task[0]['rating'] = request.json.get('rating', "")   
-    task[0]['revenue'] = request.json.get('revenue', "")        
-    return jsonify({'task': task})
-
-@app.route('/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task(task_id):
-     # :Load data 
-    read_csv_file()
-    task = [task for task in tasks if task['id'] == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'}), 404
-    tasks.remove(task[0])
-    return jsonify({'result': 'Task deleted'})
-
-if __name__ == '__main__':
-    app.run()
-
-
+    # return app(event, context)
   
 
 #   import json
@@ -224,52 +287,52 @@ if __name__ == '__main__':
 #     # Your code here
 
 
-rom flask import Flask, jsonify, request
+# rom flask import Flask, jsonify, request
 
-app = Flask(__name__)
+# app = Flask(__name__)
 
-tasks = []
+# tasks = []
 
-@app.route('/tasks', methods=['GET'])
-def get_tasks():
-    return jsonify({'tasks': tasks})
+# @app.route('/tasks', methods=['GET'])
+# def get_tasks():
+#     return jsonify({'tasks': tasks})
 
-@app.route('/tasks/<int:task_id>', methods=['GET'])
-def get_task(task_id):
-    task = [task for task in tasks if task['id'] == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'})
-    return jsonify({'task': task[0]})
+# @app.route('/tasks/<int:task_id>', methods=['GET'])
+# def get_task(task_id):
+#     task = [task for task in tasks if task['id'] == task_id]
+#     if len(task) == 0:
+#         return jsonify({'message': 'Task not found'})
+#     return jsonify({'task': task[0]})
 
-@app.route('/tasks', methods=['POST'])
-def create_task():
-    task = {
-        'id': tasks[-1]['id'] + 1 if len(tasks) > 0 else 1,
-        'title': request.json['title'],
-        'description': request.json.get('description', ""),
-        'done': False
-    }
-    tasks.append(task)
-    return jsonify({'task': task}), 201
+# @app.route('/tasks', methods=['POST'])
+# def create_task():
+#     task = {
+#         'id': tasks[-1]['id'] + 1 if len(tasks) > 0 else 1,
+#         'title': request.json['title'],
+#         'description': request.json.get('description', ""),
+#         'done': False
+#     }
+#     tasks.append(task)
+#     return jsonify({'task': task}), 201
 
-@app.route('/tasks/<int:task_id>', methods=['PUT'])
-def update_task(task_id):
-    task = [task for task in tasks if task['id'] == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'})
-    task = task[0]
-    task['title'] = request.json.get('title', task['title'])
-    task['description'] = request.json.get('description', task['description'])
-    task['done'] = request.json.get('done', task['done'])
-    return jsonify({'task': task})
+# @app.route('/tasks/<int:task_id>', methods=['PUT'])
+# def update_task(task_id):
+#     task = [task for task in tasks if task['id'] == task_id]
+#     if len(task) == 0:
+#         return jsonify({'message': 'Task not found'})
+#     task = task[0]
+#     task['title'] = request.json.get('title', task['title'])
+#     task['description'] = request.json.get('description', task['description'])
+#     task['done'] = request.json.get('done', task['done'])
+#     return jsonify({'task': task})
 
-@app.route('/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task(task_id):
-    task = [task for task in tasks if task['id'] == task_id]
-    if len(task) == 0:
-        return jsonify({'message': 'Task not found'})
-    tasks.remove(task[0])
-    return jsonify({'message': 'Task deleted'})
+# @app.route('/tasks/<int:task_id>', methods=['DELETE'])
+# def delete_task(task_id):
+#     task = [task for task in tasks if task['id'] == task_id]
+#     if len(task) == 0:
+#         return jsonify({'message': 'Task not found'})
+#     tasks.remove(task[0])
+#     return jsonify({'message': 'Task deleted'})
 
-def lambda_handler(event, context):
-    return app(event, context)
+# def lambda_handler(event, context):
+#     return app(event, context)

@@ -1,0 +1,5 @@
+requests
+
+# mkdir ./package && pip install -r requirements.txt -t ./package
+# cd package && zip -r9 ../artifact.zip .
+# cd .. && zip -g artifact.zip *.py
